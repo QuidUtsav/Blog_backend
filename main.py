@@ -20,7 +20,10 @@ def get_account(db= Depends(get_db)):
 
 @app.post("/accounts")
 def create_account(account:CreateAccount, db = Depends(get_db)):
-    new_account = Account(name = account.name, email = account.email)
+    new_account = Account(name = account.name, 
+                          email = account.email,
+                          hashed_password = hash_password(account.hashed_password),
+                          role = account.role)
     db.add(new_account)
     db.commit()
     db.refresh(new_account)
@@ -33,7 +36,7 @@ def get_posts(db = Depends(get_db)):
     return posts
 @app.post("/posts")
 def create_post(post: CreatePost, db = Depends(get_db)):
-    new_post = Post(title = post.title, content = post.content, account_id = post.account_id)
+    new_post = Post(title = post.title, content = post.content, account_id = post.author_id)
     db.add(new_post)
     try:
         db.commit()
