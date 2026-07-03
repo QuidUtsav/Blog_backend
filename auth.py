@@ -5,7 +5,13 @@ from jose import JWTError, jwt
 import bcrypt
 from datetime import datetime, timedelta
 
-
+from database import Account, SessionLocal
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
@@ -24,12 +30,15 @@ def create_access_token(data: dict, expires_minutes: int = 30):
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-def get_current_account(token: str = Depends(oauth2_scheme)):
+def get_current_account(token: str = Depends(oauth2_scheme),db = Depends(get_db)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         account_id: str = payload.get("sub")
         if account_id is None:
             raise HTTPException(status_code=401, detail="Invalid token")
+        account= db.query(Account).filter(Account.id == account_id).first()
+        if account is None:
+            raise HTTPException(status_code= 401, detail="account not found.")
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
-    return account_id
+    return account

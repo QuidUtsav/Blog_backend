@@ -3,7 +3,8 @@ from database import SessionLocal, Account, Post, Comment
 from schemas import CreateAccount, CreatePost, CreateComment, AccountResponse,LoginRequest
 from sqlalchemy.exc import IntegrityError
 from auth import hash_password,verify_password,create_access_token
-
+from auth import get_current_account
+from fastapi.security import OAuth2PasswordRequestForm
 def get_db():
     db = SessionLocal()
     try:
@@ -35,8 +36,11 @@ def get_posts(db = Depends(get_db)):
     posts = db.query(Post).all()    
     return posts
 @app.post("/posts")
-def create_post(post: CreatePost, db = Depends(get_db)):
-    new_post = Post(title = post.title, content = post.content, account_id = post.author_id)
+def create_post(post: CreatePost, db = Depends(get_db), current_acc = Depends(get_current_account)):
+    if current_acc.role !="author":
+        raise HTTPException(status_code=403 , detail="only authors can create post.")
+    
+    new_post = Post(title = post.title, content = post.content, author_id = current_acc.id)
     db.add(new_post)
     try:
         db.commit()
@@ -64,16 +68,16 @@ def create_comment(comment: CreateComment, db = Depends(get_db)):
     return new_comment
 
 @app.post("/login")
-def login(login: LoginRequest, db = Depends(get_db)):
-    account = db.query(Account).filter(Account.email == login.email).first()
+def login(form_data :OAuth2PasswordRequestForm = Depends(), db = Depends(get_db)):
+    account = db.query(Account).filter(Account.email == form_data.username).first()
     
     if account is None:
         raise HTTPException(status_code=404, detail="account not found")
     
     else:
-        if verify_password(login.password, account.hashed_password):
+        if verify_password(form_data.password, account.hashed_password):
             token = create_access_token({"sub": str(account.id)})
-            return {"access_token": token, "token_type": "bearer"}
+            return {"access_token": token, "token_type": "bearer", "account_type":account.role}
         else:
             raise HTTPException(status_code=401, detail="password incorrect.")
         

@@ -26,7 +26,6 @@ class TokenResponse(BaseModel):
 class CreatePost(BaseModel):
     title:str
     content:str
-    author_id: int
     
 class CreateComment(BaseModel):
     content:str
