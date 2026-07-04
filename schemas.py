@@ -30,4 +30,3 @@ class CreatePost(BaseModel):
 class CreateComment(BaseModel):
     content:str
     post_id:int
-    user_id:int
